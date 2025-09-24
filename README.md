@@ -3,12 +3,12 @@
 ## 项目描述
 
 - 程序启动时若已连接天翼宽带Wi-Fi，则启动`ESurfingDialer-1.9.5-all.jar`以认证天翼账户。
-- 当Wi-Fi从天翼宽带断开时，则自动中止ESurfingDialer-1.9.5-all.jar进程。
+- 当Wi-Fi从天翼宽带断开时，则自动中止`ESurfingDialer-1.9.5-all.jar`进程。
 
 ## 安装步骤
 
 - 安装Java jre，jre版本由项目ESurfingDialer决定。
-- 下载`ESurfingDialer-1.9.5-all.jar`以及本项目可执行文件。
+- 下载`ESurfingDialer-1.9.5-all.jar`以及本项目可执行文件。关于`ESurfingDialer`，见[ESurfingDialer](https://github.com/search?q=ESurfingDialer&type=repositories)。
 - 复制`ESurfingDialerManager.json`、`log4j.properties`配置文件到`ESurfingDialer-1.9.5-all.jar`相同目录。
 - 修改配置文件`ESurfingDialerManager.json`，填充天翼宽带账户和密码。
 - 执行`ESurfingDialerManager.exe C:\path\to\ESurfingDialer\ESurfingDialerManager.json`
