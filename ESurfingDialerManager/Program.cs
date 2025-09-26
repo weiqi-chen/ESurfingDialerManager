@@ -1,15 +1,14 @@
 ﻿using System;
 using System.IO;
-using System.Xml;
 using System.Linq;
 using System.Text.Json;
-using ManagedNativeWifi;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using Microsoft.VisualStudio.Threading;
-using System.Diagnostics.Eventing.Reader;
 
+using ManagedNativeWifi;
+using Meziantou.Framework.Win32;
+using Microsoft.VisualStudio.Threading;
 
 namespace ESurfingDialerManager;
 
@@ -45,30 +44,36 @@ public static class EnumExtensions
     }
 #nullable disable
 }
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "<Pending>")]
 class Model
 {
     public Config Config { get; set; } = new Config();
 
-    public string WorkingDirectory { get; set; }
+public string WorkingDirectory { get; set; }
     public AsyncQueue<Enum> EventQueue { get; set; }
 
-    //private WindowsEventListener windowsEventListener;
+    JobObject job;
     private WifiEventListener wifiEventListener;
     private Process process;
     private bool running;
 
     public void Init()
     {
-        //创建事件监听器，通过事件监听器监听Wi-Fi连接的断开与连接。
-        //windowsEventListener = new WindowsEventListener();
+        //通过Windows Job Object确保所启动的Java进程在本进程退出时退出。
+        job = new JobObject();
+        job.SetLimits(new JobObjectLimits()
+        {
+            Flags = JobObjectLimitFlags.KillOnJobClose | JobObjectLimitFlags.DieOnUnhandledException,
+        });
 
+        //创建WiFi事件监听器，监听Wi-Fi连接的断开与连接。
         wifiEventListener = new WifiEventListener();
         wifiEventListener.WifiEventOccurred += WifiEventListener_WifiEventOccurred;
+        
         //创建事件队列，外部事件通过此队列通知主程序
         EventQueue = new AsyncQueue<Enum>();
 
         Console.CancelKeyPress += Console_CancelKeyPress;
-        AppDomain.CurrentDomain.ProcessExit += new EventHandler(CurrentDomain_ProcessExit);
     }
 
     private void WifiEventListener_WifiEventOccurred(object sender, WifiEventListener.WifiEventArgs e)
@@ -84,10 +89,6 @@ class Model
     {
         Stop();
         Environment.Exit(0);
-    }
-    private void CurrentDomain_ProcessExit(object sender, EventArgs e)
-    {
-        Stop();
     }
 
     public Process ESurfingDialerProcess()
@@ -128,9 +129,6 @@ class Model
         try
         {
             process.Start();
-            this.process = process;
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
         }
         catch (Exception ex)
         {
@@ -142,6 +140,10 @@ class Model
         EventQueue.Enqueue(WiFiState.Connected);
         try
         {
+            this.process = process;
+            job.AssignProcess(process);
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
             await process.WaitForExitAsync();
         }
         catch (Exception ex)
@@ -183,7 +185,10 @@ class Model
         wifiEventListener.Stop();
         EventQueue.Complete();
         if (process?.HasExited == false)
+        {
             process.Kill();
+            process = null;
+        }
     }
 
 
@@ -304,6 +309,7 @@ class Model
                 }
             }
         }
+        job.Dispose();
     }
 
     public static bool ISProfileConnected(string name)
